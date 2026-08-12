@@ -38,6 +38,7 @@ function setMode(mode) {
   $('drop-subtitle').textContent = mode === 'encode' ? '单个文件，最大 100 MiB' : '只接受未被修改的无损 PNG';
   action.textContent = mode === 'encode' ? '转换为 PNG' : '还原原文件';
   input.accept = mode === 'decode' ? 'image/png,.png' : '';
+  $('zip-option').classList.toggle('hidden', mode !== 'encode');
   input.value = '';
   selectFile(null);
 }
@@ -60,7 +61,10 @@ async function run() {
   action.disabled = true;
   showStatus(state.mode === 'encode' ? '正在编码，请稍候…' : '正在校验并还原，请稍候…');
   try {
-    const query = state.mode === 'encode' ? `?filename=${encodeURIComponent(state.file.name)}` : '';
+    const zip = state.mode === 'encode' && $('zip-output').checked;
+    const query = state.mode === 'encode'
+      ? `?filename=${encodeURIComponent(state.file.name)}${zip ? '&archive=zip' : ''}`
+      : '';
     const response = await fetch(`/api/${state.mode}${query}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
@@ -71,7 +75,7 @@ async function run() {
       throw new Error(body.message || `${body.code || 'HTTP_ERROR'} (${response.status})`);
     }
     const blob = await response.blob();
-    const fallback = state.mode === 'encode' ? `${state.file.name}.png` : 'recovered_file';
+    const fallback = state.mode === 'encode' ? `${state.file.name}.png${zip ? '.zip' : ''}` : 'recovered_file';
     const filename = filenameFromDisposition(response.headers.get('Content-Disposition'), fallback);
     state.downloadUrl = URL.createObjectURL(blob);
     download.href = state.downloadUrl;
@@ -80,7 +84,7 @@ async function run() {
     download.classList.remove('hidden');
     const dimensions = response.headers.get('X-Image-Dimensions');
     showStatus(state.mode === 'encode'
-      ? `转换完成：${humanSize(state.file.size)} → ${humanSize(blob.size)}${dimensions ? ` · ${dimensions}` : ''}`
+      ? `转换完成${zip ? '并已打包 ZIP' : ''}：${humanSize(state.file.size)} → ${humanSize(blob.size)}${dimensions ? ` · ${dimensions}` : ''}`
       : `校验通过，已恢复 ${filename}（${humanSize(blob.size)}）`);
   } catch (error) {
     showStatus(`处理失败：${error.message}`, true);

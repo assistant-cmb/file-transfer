@@ -10,6 +10,7 @@ from pathlib import Path
 from .codec import decode_bytes, encode_bytes
 from .errors import FileTransferError
 from .format import MAX_FILE_SIZE, safe_output_name
+from .zip_archive import create_zip
 
 SHARED_DIR = Path(__file__).resolve().parents[2] / "shared"
 MAX_REQUEST_SIZE = 140 * 1024 * 1024
@@ -76,8 +77,13 @@ class Handler(BaseHTTPRequestHandler):
                 filename = urllib.parse.parse_qs(parsed.query).get("filename", [""])[0]
                 png, metadata = encode_bytes(body, filename)
                 output_name = f"{safe_output_name(str(metadata['filename']))}.png"
-                self._send(200, png, "image/png", {
-                    "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(output_name)}",
+                archive = urllib.parse.parse_qs(parsed.query).get("archive", [""])[0]
+                if archive not in ("", "zip"):
+                    raise FileTransferError("INVALID_HEADER", "不支持的压缩格式")
+                result = create_zip(png, output_name) if archive == "zip" else png
+                download_name = f"{output_name}.zip" if archive == "zip" else output_name
+                self._send(200, result, "application/zip" if archive == "zip" else "image/png", {
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(download_name)}",
                     "X-Image-Dimensions": f"{metadata['width']}×{metadata['height']}",
                 })
             elif parsed.path == "/api/decode":

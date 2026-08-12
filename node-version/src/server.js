@@ -6,6 +6,7 @@ const { URL } = require('node:url');
 const { encodeBytes, decodeBytes } = require('./codec');
 const { FileTransferError } = require('./errors');
 const { MAX_FILE_SIZE, safeOutputName } = require('./format');
+const { createZip } = require('./zip-archive');
 
 const SHARED_DIR = path.resolve(__dirname, '..', '..', 'shared');
 const MAX_REQUEST_SIZE = 140 * 1024 * 1024;
@@ -73,8 +74,13 @@ async function handle(request, response) {
   if (url.pathname === '/api/encode') {
     if (body.length > MAX_FILE_SIZE) throw new FileTransferError('LIMIT_EXCEEDED', '文件超过 100 MiB 限制');
     const { png, metadata } = encodeBytes(body, url.searchParams.get('filename') || '');
-    send(response, 200, png, 'image/png', {
-      'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(`${safeOutputName(metadata.filename)}.png`)}`,
+    const archive = url.searchParams.get('archive') || '';
+    if (!['', 'zip'].includes(archive)) throw new FileTransferError('INVALID_HEADER', '不支持的压缩格式');
+    const outputName = `${safeOutputName(metadata.filename)}.png`;
+    const result = archive === 'zip' ? createZip(png, outputName) : png;
+    const downloadName = archive === 'zip' ? `${outputName}.zip` : outputName;
+    send(response, 200, result, archive === 'zip' ? 'application/zip' : 'image/png', {
+      'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(downloadName)}`,
       'X-Image-Dimensions': `${metadata.width}×${metadata.height}`,
     });
   } else if (url.pathname === '/api/decode') {

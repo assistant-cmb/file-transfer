@@ -28,6 +28,11 @@ header p { margin: 0; color: #617069; font-size: 16px; }
 .file-info .label { display: block; margin-bottom: 2px; color: #78867f; font-size: 11px; }
 .file-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill { flex: none; padding: 5px 9px; border-radius: 999px; color: #476055; background: #e2ebe6; font-size: 12px; }
+.option-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 11px 13px; border: 1px solid #dde6e1; border-radius: 12px; cursor: pointer; }
+.option-row input { width: 17px; height: 17px; accent-color: #1d875a; }
+.option-row span { display: flex; flex-direction: column; gap: 2px; }
+.option-row strong { font-size: 14px; }
+.option-row small { color: #78867f; font-size: 12px; }
 .primary, .download { display: block; width: 100%; margin-top: 14px; padding: 13px 16px; border: 0; border-radius: 12px; text-align: center; text-decoration: none; font-weight: 800; }
 .primary { color: white; background: #172b22; cursor: pointer; }
 .primary:hover:not(:disabled) { background: #1d875a; }

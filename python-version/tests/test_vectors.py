@@ -1,6 +1,8 @@
+import io
 import json
 import sys
 import unittest
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -10,6 +12,7 @@ from file_transfer.codec import decode_bytes, encode_bytes
 from file_transfer.errors import FileTransferError
 from file_transfer.format import build_stream
 from file_transfer.png_codec import encode_rgb_png
+from file_transfer.zip_archive import create_zip
 
 
 class VectorTests(unittest.TestCase):
@@ -55,6 +58,13 @@ class VectorTests(unittest.TestCase):
         with self.assertRaises(FileTransferError) as padding_error:
             decode_bytes(encode_rgb_png(side, side, padding_corrupt))
         self.assertEqual("NONZERO_PADDING", padding_error.exception.code)
+
+    def test_zip_archive_contains_decodable_png(self):
+        png, _ = encode_bytes(b"zip payload", "压缩样例.txt")
+        archive = create_zip(png, "压缩样例.txt.png")
+        with zipfile.ZipFile(io.BytesIO(archive)) as zipped:
+            self.assertEqual(["压缩样例.txt.png"], zipped.namelist())
+            self.assertEqual(b"zip payload", decode_bytes(zipped.read("压缩样例.txt.png")).data)
 
 
 if __name__ == "__main__":

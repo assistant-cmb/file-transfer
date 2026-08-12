@@ -8,6 +8,7 @@ from pathlib import Path
 from .codec import decode_bytes, encode_bytes
 from .errors import FileTransferError
 from .format import safe_output_name, unique_path
+from .zip_archive import create_zip
 
 
 def _read(path: Path) -> bytes:
@@ -37,6 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
         item.add_argument("input")
         if command != "inspect":
             item.add_argument("-o", "--output")
+        if command == "encode":
+            item.add_argument("--zip", action="store_true", help="将生成的 PNG 打包为 ZIP")
         item.add_argument("--json", action="store_true")
     serve = sub.add_parser("serve")
     serve.add_argument("--host", default="127.0.0.1")
@@ -56,9 +59,14 @@ def main(argv=None) -> int:
         raw = _read(input_path)
         if args.command == "encode":
             png, metadata = encode_bytes(raw, input_path.name)
-            output = Path(args.output) if args.output else input_path.with_name(f"{input_path.name}.png")
-            output = _write(output, png)
+            png_name = f"{safe_output_name(input_path.name)}.png"
+            data = create_zip(png, png_name) if args.zip else png
+            default_name = f"{input_path.name}.png.zip" if args.zip else f"{input_path.name}.png"
+            output = Path(args.output) if args.output else input_path.with_name(default_name)
+            output = _write(output, data)
             result = {"ok": True, "operation": "encode", "output": str(output.resolve()), **metadata}
+            if args.zip:
+                result.update({"archive": "zip", "archiveEntry": png_name})
         else:
             decoded = decode_bytes(raw)
             if args.command == "inspect":

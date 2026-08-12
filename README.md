@@ -1,6 +1,6 @@
 # File Transfer
 
-把任意文件无损转换为 PNG 图片，也可以从 PNG 自动恢复原文件。项目提供功能一致、互相兼容的纯 Python 版和纯 Node.js 版；选择本机已有运行环境的版本即可，不需要同时安装两种环境。
+把任意文件无损转换为 PNG 图片，也可以将生成的 PNG 自动打包为 ZIP，或从 PNG 自动恢复原文件。项目提供功能一致、互相兼容的纯 Python 版和纯 Node.js 版；选择本机已有运行环境的版本即可，不需要同时安装两种环境。
 
 所有处理都在本机完成。服务默认只监听 `127.0.0.1`，不会上传文件、发送遥测或访问云端。
 
@@ -38,7 +38,8 @@ chmod +x python-version/start.command node-version/start.command
 1. 选择“文件 → 图片”或“图片 → 文件”。
 2. 点击选择区域，或者把文件拖入页面。
 3. 点击转换按钮。
-4. 校验通过后点击下载结果。
+4. 文件转图片时可勾选“转换后打包为 ZIP”。
+5. 校验通过后点击下载结果；ZIP 输出需先解压，再使用其中的 PNG 还原文件。
 
 默认最大原文件大小为 100 MiB。生成的 PNG 必须保持原样；缩放、裁剪、调色或转成 JPEG 都会破坏数据，工具会拒绝校验失败的图片。
 
@@ -48,6 +49,7 @@ chmod +x python-version/start.command node-version/start.command
 
 ```bash
 python3 -m file_transfer encode path/to/input.zip
+python3 -m file_transfer encode path/to/input.zip --zip
 python3 -m file_transfer decode path/to/input.zip.png
 python3 -m file_transfer inspect path/to/input.zip.png
 python3 -m file_transfer inspect path/to/input.zip.png --json
@@ -62,6 +64,7 @@ python3 -m file_transfer serve --port 8765 --no-browser
 
 ```bash
 node src/cli.js encode path/to/input.zip
+node src/cli.js encode path/to/input.zip --zip
 node src/cli.js decode path/to/input.zip.png
 node src/cli.js inspect path/to/input.zip.png
 node src/cli.js inspect path/to/input.zip.png --json
@@ -111,7 +114,7 @@ python3 -m unittest discover -s tests -p '*_test.py' -v
 - PNG 内保存原文件名、64 位文件长度、SHA-256、格式版本和头部 CRC-32。
 - 解码会检查 PNG 结构、魔数、版本、元数据、图片容量、零填充和 SHA-256。
 - 文件名在恢复前会进行路径与平台安全处理。
-- 格式提供完整性检查，不提供加密、身份认证、压缩或纠错能力。
+- PNG 内部格式提供完整性检查，不提供加密、身份认证、内部压缩或纠错能力；可选的 ZIP 仅用于打包生成的 PNG。
 - 旧 `0xAF` 图片格式和需要手工输入文件大小的早期 Python 格式不属于 v1.0。
 
 ## 常见问题

@@ -4,22 +4,24 @@ const path = require('node:path');
 const { encodeBytes, decodeBytes } = require('./codec');
 const { FileTransferError } = require('./errors');
 const { safeOutputName, uniquePath } = require('./format');
+const { createZip } = require('./zip-archive');
 
 function usage() {
   console.log(`File Transfer PNG v1.0
 
 用法:
-  node src/cli.js encode <input> [-o output.png] [--json]
+  node src/cli.js encode <input> [-o output.png] [--zip] [--json]
   node src/cli.js decode <input.png> [-o output-or-directory] [--json]
   node src/cli.js inspect <input.png> [--json]
   node src/cli.js serve [--host 127.0.0.1] [--port 0] [--no-browser]`);
 }
 
 function parse(argv) {
-  const args = { command: argv[0], input: null, output: null, json: false, host: '127.0.0.1', port: 0, noBrowser: false };
+  const args = { command: argv[0], input: null, output: null, json: false, zip: false, host: '127.0.0.1', port: 0, noBrowser: false };
   for (let index = 1; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--json') args.json = true;
+    else if (value === '--zip') args.zip = true;
     else if (value === '--no-browser') args.noBrowser = true;
     else if (value === '-o' || value === '--output') args.output = argv[++index];
     else if (value === '--host') args.host = argv[++index];
@@ -59,12 +61,16 @@ function main(argv = process.argv.slice(2)) {
       return 0;
     }
     if (!['encode', 'decode', 'inspect'].includes(args.command) || !args.input) throw new FileTransferError('INVALID_HEADER', '命令或输入参数无效');
+    if (args.zip && args.command !== 'encode') throw new FileTransferError('INVALID_HEADER', '--zip 只能用于 encode 命令');
     const input = readFile(args.input);
     let result;
     if (args.command === 'encode') {
       const encoded = encodeBytes(input, path.basename(args.input));
-      const output = writeFile(args.output || `${args.input}.png`, encoded.png);
+      const pngName = `${safeOutputName(path.basename(args.input))}.png`;
+      const data = args.zip ? createZip(encoded.png, pngName) : encoded.png;
+      const output = writeFile(args.output || `${args.input}.png${args.zip ? '.zip' : ''}`, data);
       result = { ok: true, operation: 'encode', output, ...encoded.metadata };
+      if (args.zip) Object.assign(result, { archive: 'zip', archiveEntry: pngName });
     } else {
       const decoded = decodeBytes(input);
       if (args.command === 'inspect') result = { ok: true, operation: 'inspect', ...decoded.metadata() };
