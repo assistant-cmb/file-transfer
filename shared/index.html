@@ -9,9 +9,8 @@
   <body>
     <main class="shell">
       <header>
-        <div class="eyebrow">LOCAL · LOSSLESS · PRIVATE</div>
         <h1>File Transfer</h1>
-        <p>在文件和无损 PNG 图片之间转换。全部数据只在本机处理。</p>
+        <p>文件与 PNG 图片互相转换</p>
       </header>
 
       <section class="card">
@@ -22,7 +21,6 @@
 
         <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
           <input id="file-input" type="file" hidden />
-          <div class="drop-icon" aria-hidden="true">⇧</div>
           <strong id="drop-title">选择或拖入任意文件</strong>
           <span id="drop-subtitle">单个文件，最大 100 MiB</span>
         </div>
@@ -47,16 +45,6 @@
         <div id="status" class="status hidden" aria-live="polite"></div>
         <a id="download" class="download hidden">下载结果</a>
       </section>
-
-      <aside class="notice">
-        <strong>请保留原始 PNG</strong>
-        <span>图片被缩放、裁剪、调色或转换成 JPEG 后将无法还原。</span>
-      </aside>
-
-      <footer>
-        <span id="runtime">File Transfer Format v1.0</span>
-        <span>仅监听 127.0.0.1</span>
-      </footer>
     </main>
     <script src="/app.js"></script>
   </body>

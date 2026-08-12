@@ -101,5 +101,3 @@ input.addEventListener('change', () => selectFile(input.files[0]));
 ['dragleave', 'drop'].forEach((name) => zone.addEventListener(name, (event) => { event.preventDefault(); zone.classList.remove('dragging'); }));
 zone.addEventListener('drop', (event) => selectFile(event.dataTransfer.files[0]));
 action.addEventListener('click', run);
-
-fetch('/api/health').then((r) => r.json()).then((data) => { $('runtime').textContent = `${data.runtime} · Format v${data.format}`; }).catch(() => {});
