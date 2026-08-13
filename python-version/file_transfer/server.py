@@ -7,13 +7,15 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .codec import decode_bytes, encode_bytes
+from .codec import decode_bytes, decode_v2_bytes, encode_bytes, encode_v2_bytes
 from .errors import FileTransferError
 from .format import MAX_FILE_SIZE, safe_output_name
+from .v2_format import MAX_ORIGINAL_BYTES
 from .zip_archive import create_zip
 
 SHARED_DIR = Path(__file__).resolve().parents[2] / "shared"
 MAX_REQUEST_SIZE = 140 * 1024 * 1024
+V2_TASK_LOCK = threading.Lock()
 
 
 class Server(ThreadingHTTPServer):
@@ -22,7 +24,7 @@ class Server(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "FileTransferPython/1.0"
+    server_version = "FileTransferPython/2.0"
 
     def log_message(self, fmt, *args):
         print(f"[{self.log_date_time_string()}] {fmt % args}")
@@ -56,7 +58,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/health":
-            self._json(200, {"ok": True, "runtime": "Python", "format": "1.0"})
+            self._json(200, {"ok": True, "runtime": "Python", "formats": ["png-v1", "jpeg-v2"]})
             return
         files = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/styles.css": "styles.css"}
         name = files.get(path)
@@ -86,13 +88,36 @@ class Handler(BaseHTTPRequestHandler):
                     "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(download_name)}",
                     "X-Image-Dimensions": f"{metadata['width']}×{metadata['height']}",
                 })
+            elif parsed.path == "/api/v2/encode":
+                if len(body) > MAX_ORIGINAL_BYTES:
+                    raise FileTransferError("LIMIT_EXCEEDED", "JPEG v2 文件超过 100 KiB 限制")
+                filename = urllib.parse.parse_qs(parsed.query).get("filename", [""])[0]
+                with V2_TASK_LOCK:
+                    jpeg, metadata = encode_v2_bytes(body, filename)
+                output_name = f"{safe_output_name(str(metadata['filename']))}.jpg"
+                self._send(200, jpeg, "image/jpeg", {
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(output_name)}",
+                    "X-Image-Dimensions": f"{metadata['width']}×{metadata['height']}",
+                    "X-Carrier-Profile": "jpeg-v2-profile-1",
+                })
             elif parsed.path == "/api/decode":
                 decoded = decode_bytes(body)
                 self._send(200, decoded.data, "application/octet-stream", {
                     "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(safe_output_name(decoded.filename))}",
                 })
+            elif parsed.path == "/api/v2/decode":
+                with V2_TASK_LOCK:
+                    decoded = decode_v2_bytes(body)
+                self._send(200, decoded.data, "application/octet-stream", {
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(safe_output_name(decoded.filename))}",
+                    "X-Carrier-Profile": "jpeg-v2-profile-1",
+                })
             elif parsed.path == "/api/inspect":
                 decoded = decode_bytes(body)
+                self._json(200, {"ok": True, **decoded.metadata()})
+            elif parsed.path == "/api/v2/inspect":
+                with V2_TASK_LOCK:
+                    decoded = decode_v2_bytes(body)
                 self._json(200, {"ok": True, **decoded.metadata()})
             else:
                 self._json(404, {"ok": False, "code": "NOT_FOUND", "message": "接口不存在"})

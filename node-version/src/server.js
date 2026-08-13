@@ -3,13 +3,21 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { URL } = require('node:url');
-const { encodeBytes, decodeBytes } = require('./codec');
+const { encodeBytes, decodeBytes, encodeV2Bytes, decodeV2Bytes } = require('./codec');
 const { FileTransferError } = require('./errors');
 const { MAX_FILE_SIZE, safeOutputName } = require('./format');
+const { MAX_FILE_SIZE: MAX_V2_FILE_SIZE } = require('./v2-format');
 const { createZip } = require('./zip-archive');
 
 const SHARED_DIR = path.resolve(__dirname, '..', '..', 'shared');
 const MAX_REQUEST_SIZE = 140 * 1024 * 1024;
+let v2Task = Promise.resolve();
+
+function serializeV2(operation) {
+  const current = v2Task.then(operation, operation);
+  v2Task = current.catch(() => {});
+  return current;
+}
 
 function json(response, status, value) {
   send(response, status, Buffer.from(JSON.stringify(value)), 'application/json; charset=utf-8');
@@ -61,7 +69,7 @@ function openBrowser(url) {
 async function handle(request, response) {
   const url = new URL(request.url, 'http://127.0.0.1');
   if (request.method === 'GET') {
-    if (url.pathname === '/api/health') { json(response, 200, { ok: true, runtime: 'Node.js', format: '1.0' }); return; }
+    if (url.pathname === '/api/health') { json(response, 200, { ok: true, runtime: 'Node.js', formats: ['png-v1', 'jpeg-v2'] }); return; }
     const files = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css' };
     const name = files[url.pathname];
     if (!name) { json(response, 404, { ok: false, code: 'NOT_FOUND', message: '资源不存在' }); return; }
@@ -83,11 +91,29 @@ async function handle(request, response) {
       'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(downloadName)}`,
       'X-Image-Dimensions': `${metadata.width}×${metadata.height}`,
     });
+  } else if (url.pathname === '/api/v2/encode') {
+    if (body.length > MAX_V2_FILE_SIZE) throw new FileTransferError('LIMIT_EXCEEDED', 'JPEG v2 文件超过 100 KiB 限制');
+    const encoded = await serializeV2(() => encodeV2Bytes(body, url.searchParams.get('filename') || ''));
+    const outputName = `${safeOutputName(encoded.metadata.filename)}.jpg`;
+    send(response, 200, encoded.jpg, 'image/jpeg', {
+      'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(outputName)}`,
+      'X-Image-Dimensions': `${encoded.metadata.width}×${encoded.metadata.height}`,
+      'X-Carrier-Profile': 'jpeg-v2-profile-1',
+    });
   } else if (url.pathname === '/api/decode') {
     const decoded = decodeBytes(body);
     send(response, 200, decoded.data, 'application/octet-stream', { 'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(safeOutputName(decoded.filename))}` });
+  } else if (url.pathname === '/api/v2/decode') {
+    const decoded = await serializeV2(() => decodeV2Bytes(body));
+    send(response, 200, decoded.data, 'application/octet-stream', {
+      'Content-Disposition': `attachment; filename*=UTF-8''${rfc5987(safeOutputName(decoded.filename))}`,
+      'X-Carrier-Profile': 'jpeg-v2-profile-1',
+    });
   } else if (url.pathname === '/api/inspect') {
     const decoded = decodeBytes(body);
+    json(response, 200, { ok: true, ...decoded.metadata() });
+  } else if (url.pathname === '/api/v2/inspect') {
+    const decoded = await serializeV2(() => decodeV2Bytes(body));
     json(response, 200, { ok: true, ...decoded.metadata() });
   } else json(response, 404, { ok: false, code: 'NOT_FOUND', message: '接口不存在' });
 }

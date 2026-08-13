@@ -10,7 +10,7 @@
     <main class="shell">
       <header>
         <h1>File Transfer</h1>
-        <p>文件与 PNG 图片互相转换</p>
+        <p>文件与 PNG / 容错 JPEG 图片互相转换</p>
       </header>
 
       <section class="card">
@@ -18,6 +18,18 @@
           <button class="tab active" data-mode="encode" role="tab">文件 → 图片</button>
           <button class="tab" data-mode="decode" role="tab">图片 → 文件</button>
         </div>
+
+        <fieldset id="format-options" class="format-options">
+          <legend>图片格式</legend>
+          <label>
+            <input type="radio" name="image-format" value="png" checked />
+            <span><strong>PNG v1</strong><small>无损、高容量，图片必须保持原样</small></span>
+          </label>
+          <label>
+            <input type="radio" name="image-format" value="jpeg" />
+            <span><strong>JPEG v2</strong><small>最大 100 KiB，可承受轻度压缩和等比缩放</small></span>
+          </label>
+        </fieldset>
 
         <div id="drop-zone" class="drop-zone" tabindex="0" role="button">
           <input id="file-input" type="file" hidden />

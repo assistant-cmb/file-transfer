@@ -1,5 +1,7 @@
 # File Transfer 项目需求文档
 
+> 状态说明：本文记录最初的 PNG v1 MVP 需求。后续 JPEG v2 扩展允许使用 Pillow/Sharp，并以 [FORMAT_V2.md](./FORMAT_V2.md) 和当前 README 为准；文中“只接受 PNG”和“零第三方依赖”等条目仅适用于 v1 阶段。
+
 ## 1. 文档信息
 
 - 项目名称：File Transfer

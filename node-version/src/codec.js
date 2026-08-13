@@ -13,4 +13,16 @@ function decodeBytes(png) {
 
 function inspectBytes(png) { return decodeBytes(png).metadata(); }
 
-module.exports = { encodeBytes, decodeBytes, inspectBytes };
+async function encodeV2Bytes(data, filename) {
+  return require('./v2-image').encodeV2Jpeg(data, filename);
+}
+
+async function decodeV2Bytes(image) {
+  return require('./v2-image').decodeV2Image(image);
+}
+
+async function inspectV2Bytes(image) {
+  return (await decodeV2Bytes(image)).metadata();
+}
+
+module.exports = { encodeBytes, decodeBytes, inspectBytes, encodeV2Bytes, decodeV2Bytes, inspectV2Bytes };

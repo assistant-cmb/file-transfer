@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from .codec import decode_bytes, encode_bytes
+from .codec import decode_bytes, decode_v2_bytes, encode_bytes, encode_v2_bytes
 from .errors import FileTransferError
 from .format import safe_output_name, unique_path
 from .zip_archive import create_zip
@@ -31,7 +31,7 @@ def _write(path: Path, data: bytes) -> Path:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m file_transfer", description="File Transfer PNG v1.0")
+    parser = argparse.ArgumentParser(prog="python -m file_transfer", description="File Transfer PNG v1 / JPEG v2")
     sub = parser.add_subparsers(dest="command", required=True)
     for command in ("encode", "decode", "inspect"):
         item = sub.add_parser(command)
@@ -40,6 +40,13 @@ def build_parser() -> argparse.ArgumentParser:
             item.add_argument("-o", "--output")
         if command == "encode":
             item.add_argument("--zip", action="store_true", help="将生成的 PNG 打包为 ZIP")
+            item.add_argument(
+                "--format",
+                dest="output_format",
+                choices=("png", "jpeg", "jpg"),
+                default="png",
+                help="输出 png（v1，无损）或 jpeg（v2，抗轻度转码）",
+            )
         item.add_argument("--json", action="store_true")
     serve = sub.add_parser("serve")
     serve.add_argument("--host", default="127.0.0.1")
@@ -58,17 +65,24 @@ def main(argv=None) -> int:
         input_path = Path(args.input)
         raw = _read(input_path)
         if args.command == "encode":
-            png, metadata = encode_bytes(raw, input_path.name)
-            png_name = f"{safe_output_name(input_path.name)}.png"
-            data = create_zip(png, png_name) if args.zip else png
-            default_name = f"{input_path.name}.png.zip" if args.zip else f"{input_path.name}.png"
+            output_format = "jpeg" if args.output_format in {"jpeg", "jpg"} else "png"
+            if output_format == "jpeg" and args.zip:
+                raise FileTransferError("INVALID_HEADER", "JPEG v2 不能与 --zip 同时使用；请直接编码原 ZIP 文件")
+            if output_format == "jpeg":
+                data, metadata = encode_v2_bytes(raw, input_path.name)
+                default_name = f"{input_path.name}.jpg"
+            else:
+                png, metadata = encode_bytes(raw, input_path.name)
+                png_name = f"{safe_output_name(input_path.name)}.png"
+                data = create_zip(png, png_name) if args.zip else png
+                default_name = f"{input_path.name}.png.zip" if args.zip else f"{input_path.name}.png"
             output = Path(args.output) if args.output else input_path.with_name(default_name)
             output = _write(output, data)
-            result = {"ok": True, "operation": "encode", "output": str(output.resolve()), **metadata}
+            result = {"ok": True, "operation": "encode", "format": output_format, "output": str(output.resolve()), **metadata}
             if args.zip:
                 result.update({"archive": "zip", "archiveEntry": png_name})
         else:
-            decoded = decode_bytes(raw)
+            decoded = decode_v2_bytes(raw) if raw.startswith(b"\xff\xd8\xff") else decode_bytes(raw)
             if args.command == "inspect":
                 result = {"ok": True, "operation": "inspect", **decoded.metadata()}
             else:
@@ -93,7 +107,7 @@ def main(argv=None) -> int:
 
 def _human(result: dict) -> str:
     if result["operation"] == "inspect":
-        return f"有效的 File Transfer PNG：{result['filename']}，{result['fileLength']} 字节，SHA-256 {result['sha256']}"
+        return f"有效的 File Transfer v{result['version']} 图片：{result['filename']}，{result['fileLength']} 字节，SHA-256 {result['sha256']}"
     return f"{result['operation']} 完成：{result['output']}"
 
 

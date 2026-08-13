@@ -61,6 +61,72 @@ class InteroperabilityTests(unittest.TestCase):
             self.assertEqual(payload, python_output.read_bytes())
             self.assertEqual(inspected_by_node["sha256"], inspected_by_python["sha256"])
 
+    def test_bidirectional_jpeg_v2_compatibility(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            raise unittest.SkipTest("Pillow is not installed")
+        node_probe = subprocess.run(
+            ["node", "-e", "require('sharp')"],
+            cwd=ROOT / "node-version",
+            capture_output=True,
+        )
+        if node_probe.returncode:
+            raise unittest.SkipTest("sharp is not installed")
+
+        with tempfile.TemporaryDirectory(prefix="file-transfer-v2-") as temp:
+            temp = Path(temp)
+            source = temp / "跨语言-v2.zip"
+            payload = bytes((index * 37 + 17) & 0xFF for index in range(4096))
+            source.write_bytes(payload)
+
+            python_jpg = temp / "python.jpg"
+            node_output = temp / "node-v2.zip"
+            self.run_json(
+                [sys.executable, "-m", "file_transfer", "encode", str(source), "--format", "jpeg", "-o", str(python_jpg), "--json"],
+                ROOT / "python-version",
+            )
+            python_transferred = temp / "python-transferred.jpg"
+            subprocess.run(
+                [
+                    "node", "-e",
+                    "const s=require('sharp');const [i,o]=process.argv.slice(1);s(i).metadata().then(m=>s(i).resize(Math.round(m.width*.82),Math.round(m.height*.82)).jpeg({quality:82}).toFile(o));",
+                    str(python_jpg), str(python_transferred),
+                ],
+                cwd=ROOT / "node-version",
+                check=True,
+            )
+            inspected_by_node = self.run_json(
+                ["node", "src/cli.js", "inspect", str(python_transferred), "--json"],
+                ROOT / "node-version",
+            )
+            self.run_json(
+                ["node", "src/cli.js", "decode", str(python_transferred), "-o", str(node_output), "--json"],
+                ROOT / "node-version",
+            )
+            self.assertEqual(payload, node_output.read_bytes())
+
+            node_jpg = temp / "node.jpg"
+            python_output = temp / "python-v2.zip"
+            self.run_json(
+                ["node", "src/cli.js", "encode", str(source), "--format", "jpeg", "-o", str(node_jpg), "--json"],
+                ROOT / "node-version",
+            )
+            node_transferred = temp / "node-transferred.jpg"
+            with Image.open(node_jpg) as image:
+                side = round(image.width * 0.82)
+                image.resize((side, side), Image.Resampling.BILINEAR).save(node_transferred, "JPEG", quality=82)
+            inspected_by_python = self.run_json(
+                [sys.executable, "-m", "file_transfer", "inspect", str(node_transferred), "--json"],
+                ROOT / "python-version",
+            )
+            self.run_json(
+                [sys.executable, "-m", "file_transfer", "decode", str(node_transferred), "-o", str(python_output), "--json"],
+                ROOT / "python-version",
+            )
+            self.assertEqual(payload, python_output.read_bytes())
+            self.assertEqual(inspected_by_node["sha256"], inspected_by_python["sha256"])
+
 
 if __name__ == "__main__":
     unittest.main()

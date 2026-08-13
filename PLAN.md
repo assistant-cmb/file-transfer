@@ -1,5 +1,7 @@
 # File Transfer 实施计划
 
+> 状态说明：本文记录 PNG v1 的初始实施计划。已完成的 JPEG v2 扩展、Pillow/Sharp 依赖和 100 KiB 容错载体限制以 [FORMAT_V2.md](./FORMAT_V2.md) 与当前 README 为准。
+
 ## 1. 实施原则
 
 - 先冻结文件格式和测试向量，再开发界面，避免编解码兼容性被 UI 反向影响。

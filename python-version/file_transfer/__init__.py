@@ -1,3 +1,3 @@
-"""Pure-Python File Transfer v1.0 implementation."""
+"""Python File Transfer PNG v1 / JPEG v2 implementation."""
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
