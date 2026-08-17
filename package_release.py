@@ -45,6 +45,7 @@ EXCLUDED_FILE_NAMES = {
     ".gitignore",
     "PLAN.md",
     "REQUIREMENTS.md",
+    "package-lock.json",
     "package.bat",
     "package.command",
     "package_release.py",

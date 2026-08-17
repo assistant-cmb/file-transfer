@@ -13,8 +13,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent
 PYTHON_ROOT = PROJECT_ROOT / "python-version"
 NODE_ROOT = PROJECT_ROOT / "node-version"
-PILLOW_VERSION = "12.3.0"
-SHARP_VERSION = "0.35.3"
+PILLOW_MIN_MAJOR = 12
 
 
 def run_probe(command: list[str], cwd: Path) -> bool:
@@ -49,7 +48,7 @@ def python_candidates() -> list[Path]:
 def find_python_runtime() -> Path | None:
     probe = (
         "import sys, PIL; "
-        f"raise SystemExit(0 if sys.version_info >= (3, 11) and PIL.__version__ == '{PILLOW_VERSION}' else 1)"
+        f"raise SystemExit(0 if sys.version_info >= (3, 10) and int(PIL.__version__.split('.')[0]) >= {PILLOW_MIN_MAJOR} else 1)"
     )
     for executable in python_candidates():
         if executable.is_file() and run_probe([str(executable), "-c", probe], PYTHON_ROOT):
@@ -63,8 +62,7 @@ def find_node_runtime() -> str | None:
         return None
     probe = (
         "const [major,minor]=process.versions.node.split('.').map(Number);"
-        f"const sharp=require('sharp');process.exit((major>20||(major===20&&minor>=9))"
-        f"&&sharp.versions.sharp==='{SHARP_VERSION}'?0:1)"
+        "const sharp=require('sharp');process.exit((major>20||(major===20&&minor>=9))&&sharp?0:1)"
     )
     return executable if run_probe([executable, "-e", probe], NODE_ROOT) else None
 
@@ -102,13 +100,13 @@ def main() -> int:
         cwd = NODE_ROOT
     else:
         if args.runtime == "python":
-            detail = "Python 3.11+ 或 Pillow 12.3.0 不可用"
+            detail = "Python 3.10+ 或 Pillow 12+ 不可用"
         elif args.runtime == "node":
-            detail = "Node.js 20.9.0+ 或 sharp 0.35.3 不可用"
+            detail = "Node.js 20.9.0+ 或兼容的 sharp 不可用"
         else:
             detail = "Python 版和 Node.js 版都不可用"
         print(f"启动失败：{detail}。", file=sys.stderr)
-        print("请先运行 python-version 或 node-version 目录中的 setup 脚本。", file=sys.stderr)
+        print("请先运行根目录的统一 setup 脚本。", file=sys.stderr)
         return 1
 
     print(f"使用 {label}")

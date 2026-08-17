@@ -1,11 +1,6 @@
 @echo off
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 cd /d "%~dp0"
-
-if exist "python-version\.venv\Scripts\python.exe" (
-  "python-version\.venv\Scripts\python.exe" -c "import sys;raise SystemExit(0 if sys.version_info >= (3,10) else 1)" >nul 2>nul
-  if not errorlevel 1 goto run_venv
-)
 
 where py >nul 2>nul
 if not errorlevel 1 (
@@ -27,24 +22,20 @@ if not errorlevel 1 (
 )
 goto missing
 
-:run_venv
-"python-version\.venv\Scripts\python.exe" start.py %*
-goto finished
-
 :run_py310
-py -3.10 start.py %*
+py -3.10 setup.py %*
 goto finished
 
 :run_py
-py -3 start.py %*
+py -3 setup.py %*
 goto finished
 
 :run_python
-python start.py %*
+python setup.py %*
 goto finished
 
 :run_python3
-python3 start.py %*
+python3 setup.py %*
 
 :finished
 set "STATUS=%ERRORLEVEL%"
@@ -52,6 +43,7 @@ if not "%STATUS%"=="0" pause
 exit /b %STATUS%
 
 :missing
-echo The unified launcher requires Python 3.10 or newer.
+echo No usable Python 3.10 or newer installation was found.
+echo The Windows py launcher may contain a stale entry. The script also tried python and python3.
 pause
 exit /b 1

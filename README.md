@@ -17,12 +17,12 @@ Python 版和 Node.js 版遵循相同格式，可以相互恢复对方生成的�
 3. Node.js 版。
 
 因此默认总是优先使用 Python，Python 版不可用时才回退 Node.js。统一启动器本身需要
-Python 3.11+；实际图片处理只需安装下面任意一版的依赖，不需要两版都安装。
+Python 3.10+；实际图片处理只需安装下面任意一版的依赖，不需要两版都安装。
 
 | 实现 | 运行要求 | 图片依赖 | 安装目录 |
 | --- | --- | --- | --- |
-| Python（优先） | Python 3.11+ | Pillow 12.3.0 | `python-version` |
-| Node.js（回退） | Node.js 20.9.0+ | sharp 0.35.3 | `node-version` |
+| Python（优先） | Python 3.10+ | Pillow 12+ | `python-version` |
+| Node.js（回退） | Node.js 20.9.0+ | npm 源中可用的 sharp | `node-version` |
 
 ## 首次安装依赖
 
@@ -30,26 +30,39 @@ Python 3.11+；实际图片处理只需安装下面任意一版的依赖，不�
 
 ### macOS
 
-在 Finder 中打开所选版本目录，先双击其中的 `setup.command`。安装完成后回到项目
-根目录，双击统一的 `start.command`。
+在 Finder 中打开项目根目录，双击统一的 `setup.command`。根据提示输入 `1` 安装
+Python、输入 `2` 安装 Node.js，或输入 `3` 安装两者。选择前会先显示当前 Python、
+虚拟环境、Node.js 和 npm 的检测结果。安装完成后双击 `start.command`。
 
 如果脚本没有执行权限，在终端执行一次：
 
 ```bash
-chmod +x start.command start.py package.command package_release.py
-chmod +x python-version/setup.command node-version/setup.command
+chmod +x setup.command setup.py start.command start.py package.command package_release.py
 ```
 
 如果 macOS 阻止打开，可在 Finder 中右键脚本并选择“打开”，或在“系统设置 → 隐私与安全性”中允许。
 
-Python 安装脚本会在 `python-version/.venv` 创建独立虚拟环境，不修改系统 Python。Node.js 安装脚本使用锁定文件执行 `npm ci`。
+Python 安装会在 `python-version/.venv` 创建独立虚拟环境，不修改系统 Python，并安装
+pip 源中与当前 Python 兼容的 Pillow 12 或更高版本。
+Node.js 安装脚本安装当前 npm 源中可用的 sharp，不限定具体版本，也不使用或生成
+`package-lock.json`。不同 npm 镜像或安装时间可能得到不同版本；项目启动时会验证模块
+及其本机二进制是否能正常加载。
 
 ### Windows
 
-在资源管理器中打开所选版本目录，先双击其中的 `setup.bat`。安装完成后回到项目
-根目录，双击统一的 `start.bat`。
+在资源管理器中打开项目根目录，双击统一的 `setup.bat`，然后选择 Python、Node.js
+或两者全部安装。菜单前会显示当前环境是否存在、版本及程序路径。安装完成后双击
+`start.bat`。
 
 终端窗口会显示本地访问地址。关闭终端窗口或按 `Ctrl+C` 即可停止服务。
+
+也可通过命令行跳过安装选择菜单：
+
+```bash
+python3 setup.py --runtime python
+python3 setup.py --runtime node
+python3 setup.py --runtime all
+```
 
 也可直接运行统一启动器并检查或指定实现：
 
@@ -63,14 +76,14 @@ python3 start.py --runtime node --no-browser --port 9000
 
 ## 生成传输包
 
-打包工具需要 Python 3.11 或更高版本。这个要求独立于运行程序时选择的版本：
-即使只使用 Node.js 版，也需要 Python 3 来执行根目录的打包工具。
+打包工具需要 Python 3.10 或更高版本。这个要求独立于运行程序时选择的版本：
+即使只使用 Node.js 版，也需要 Python 3.10+ 来执行根目录的打包工具。
 
 每次修改完成后，可在项目根目录双击 `package.command`（macOS/Linux）或
 `package.bat`（Windows）。脚本会在 `dist` 目录生成带时间戳的 ZIP，以及同名
 `.sha256` 校验文件。
 
-传输包保留运行程序所需的源码、启动脚本和依赖锁文件，但不会包含 `.git`、
+传输包保留运行程序所需的源码、启动脚本和依赖声明，但不会包含 `.git`、
 `node_modules`、`.venv`、缓存、日志、测试、开发计划或已有的 `dist` 产物。
 打包过程不会删除或修改源码目录中的依赖。
 
@@ -210,6 +223,8 @@ HTTP 400，超出限制返回 HTTP 413。服务只面向本机使用，没有身
 file-transfer/
 ├── package.command/.bat     # 生成不含依赖和开发文件的传输包
 ├── package_release.py       # 跨平台打包逻辑与排除清单
+├── setup.command/.bat       # macOS/Linux 与 Windows 统一安装入口
+├── setup.py                 # Python、Node.js 或全部安装的共同逻辑
 ├── start.command/.bat       # macOS/Linux 与 Windows 统一启动入口
 ├── start.py                 # Python 优先、Node.js 回退的共同启动逻辑
 ├── FORMAT.md                 # 已冻结的无损 PNG v1.0 规范
@@ -260,9 +275,20 @@ python3 -m unittest discover -s tests -p '*_test.py' -v
 
 ### 启动脚本提示 Python 版和 Node.js 版都不可用
 
-关闭启动窗口，在 `python-version` 目录运行一次 `setup.command` 或 `setup.bat`；若只想
-使用 Node.js，则改在 `node-version` 目录运行。安装完成后回到根目录重新启动。setup
-会联网下载锁定版本；统一启动器本身不会联网安装。
+关闭启动窗口，在项目根目录运行一次统一的 `setup.command` 或 `setup.bat`，并选择要
+安装的运行环境。setup 会联网下载依赖；统一启动器本身不会联网安装。
+
+### Windows 提示 Unable to create process using Python311
+
+这通常表示 Windows 的 `py` 启动器还保留着已经卸载的 Python 路径。新版脚本会先尝试
+明确的 Python 3.10，再跳过失效的 `py`，继续尝试 `python` 和 `python3`。如果提示现有
+`.venv` 无效，请删除 `python-version\.venv` 后重新运行根目录的 `setup.bat`。
+
+### npm 提示 No matching version found for sharp
+
+这表示当前 npm 镜像没有原先指定的 sharp 版本。Node 安装现在不再限定 sharp 版本，
+会使用当前 npm 源能够提供的版本。如果仍然报错，请用 `npm config get registry` 检查
+公司镜像是否包含 sharp，然后重新运行根目录的 `setup.bat` 并选择 Node.js。
 
 ### 为什么 PNG v1 无法恢复？
 
