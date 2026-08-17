@@ -27,6 +27,7 @@ Python 版和 Node.js 版遵循相同格式，可以相互恢复对方生成的�
 如果脚本没有执行权限，在终端执行一次：
 
 ```bash
+chmod +x package.command package_release.py
 chmod +x python-version/setup.command python-version/start.command
 chmod +x node-version/setup.command node-version/start.command
 ```
@@ -40,6 +41,30 @@ Python 安装脚本会在 `python-version/.venv` 创建独立虚拟环境，不�
 在资源管理器中打开所选版本目录，先双击 `setup.bat`，安装完成后双击 `start.bat`。
 
 终端窗口会显示本地访问地址。关闭终端窗口或按 `Ctrl+C` 即可停止服务。
+
+## 生成传输包
+
+打包工具需要 Python 3.11 或更高版本。这个要求独立于运行程序时选择的版本：
+即使只使用 Node.js 版，也需要 Python 3 来执行根目录的打包工具。
+
+每次修改完成后，可在项目根目录双击 `package.command`（macOS/Linux）或
+`package.bat`（Windows）。脚本会在 `dist` 目录生成带时间戳的 ZIP，以及同名
+`.sha256` 校验文件。
+
+传输包保留运行程序所需的源码、启动脚本和依赖锁文件，但不会包含 `.git`、
+`node_modules`、`.venv`、缓存、日志、测试、开发计划或已有的 `dist` 产物。
+打包过程不会删除或修改源码目录中的依赖。
+
+生成的 ZIP 是供接收方安装和运行的精简传输包，因此也不会包含
+`package_release.py`、`package.command` 和 `package.bat`。需要修改代码并再次
+打包时，应回到包含这些工具的源码仓库执行；不要把精简传输包当作完整开发副本。
+
+也可以从命令行指定文件名或输出目录：
+
+```bash
+python3 package_release.py --name file-transfer-latest.zip
+python3 package_release.py --output-dir /path/to/output
+```
 
 ## 选择 PNG v1 还是 JPEG v2
 
@@ -120,16 +145,56 @@ node src/cli.js inspect path/to/input.zip.jpg --json
 node src/cli.js serve --port 8765 --no-browser
 ```
 
-参数、JSON 结果和核心格式校验与 Python 版保持一致。
+命令参数、图片格式和成功恢复的文件内容与 Python 版兼容。部分诊断 JSON 字段
+属于实现细节：Python v2 会报告网格和码块信息，Node.js v2 会额外报告纠正的
+符号数量，因此不应依赖两端拥有完全相同的附加字段。
+
+## HTTP API
+
+Python 和 Node.js 本地服务提供相同的基础路径。请求体都是原始二进制数据，不是
+JSON 或 multipart 表单；`filename` 查询参数必须进行 URL 编码。
+
+| 方法与路径 | 请求体 | 结果 |
+| --- | --- | --- |
+| `GET /api/health` | 无 | 运行状态及支持的格式列表 |
+| `POST /api/encode?filename=NAME` | 原文件 | PNG v1 |
+| `POST /api/encode?filename=NAME&archive=zip` | 原文件 | 装有 PNG v1 的 ZIP |
+| `POST /api/v2/encode?filename=NAME` | 最大 100 KiB 的原文件 | JPEG v2 |
+| `POST /api/decode` | PNG v1 | 恢复后的原文件 |
+| `POST /api/v2/decode` | JPEG v2 | 恢复后的原文件 |
+| `POST /api/inspect` | PNG v1 | JSON 元数据 |
+| `POST /api/v2/inspect` | JPEG v2 | JSON 元数据 |
+
+例如服务运行在 `127.0.0.1:8765` 时：
+
+```bash
+curl --data-binary @input.zip \
+  'http://127.0.0.1:8765/api/v2/encode?filename=input.zip' \
+  --output input.zip.jpg
+
+curl --data-binary @input.zip.jpg \
+  'http://127.0.0.1:8765/api/v2/decode' \
+  --output recovered.zip
+
+curl --data-binary @input.zip.jpg \
+  'http://127.0.0.1:8765/api/v2/inspect'
+```
+
+编码成功时会返回 `Content-Disposition` 和 `X-Image-Dimensions`；JPEG v2 还会
+返回 `X-Carrier-Profile: jpeg-v2-profile-1`。格式或校验错误返回 JSON 错误及
+HTTP 400，超出限制返回 HTTP 413。服务只面向本机使用，没有身份认证；不要把
+监听地址改成公网地址。
 
 ## 项目结构
 
 ```text
 file-transfer/
+├── package.command/.bat     # 生成不含依赖和开发文件的传输包
+├── package_release.py       # 跨平台打包逻辑与排除清单
 ├── FORMAT.md                 # 已冻结的无损 PNG v1.0 规范
 ├── FORMAT_V2.md              # 已冻结的容错 JPEG v2 profile 1 规范
-├── REQUIREMENTS.md           # 初始项目需求
-├── PLAN.md                   # 实施计划
+├── REQUIREMENTS.md           # PNG v1 初始需求历史归档
+├── PLAN.md                   # PNG v1 初始实施计划历史归档
 ├── shared/                   # 两版共用的浏览器界面与固定测试向量
 ├── python-version/           # Python、Pillow、CLI 与本地服务
 ├── node-version/             # Node.js、sharp、CLI 与本地服务

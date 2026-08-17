@@ -1,6 +1,9 @@
-# File Transfer 实施计划
+# File Transfer 实施计划（PNG v1 历史归档）
 
-> 状态说明：本文记录 PNG v1 的初始实施计划。已完成的 JPEG v2 扩展、Pillow/Sharp 依赖和 100 KiB 容错载体限制以 [FORMAT_V2.md](./FORMAT_V2.md) 与当前 README 为准。
+> **已归档，不是当前待办清单。** 本文原样记录 PNG v1 的初始实施计划，因此正文
+> 中未勾选的决策、零第三方依赖和 PNG-only 候选项不表示当前实现状态。当前安装、
+> 操作、容量和打包说明以 [README.md](./README.md) 为准；已完成的 JPEG v2
+> 扩展以 [FORMAT_V2.md](./FORMAT_V2.md) 为准。
 
 ## 1. 实施原则
 

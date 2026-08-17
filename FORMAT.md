@@ -193,7 +193,7 @@ A non-square image, an image with additional rows or columns, insufficient capac
 
 PNG dimensions are limited to `1..2^31-1` by the PNG specification. An encoder MUST reject an input whose computed side exceeds `2^31-1`. Implementations MAY enforce a much smaller product limit, but that is a product/runtime limit rather than a format change.
 
-The initial product limit is 100 MiB per original file unless configured otherwise. Both versions SHOULD apply the same default and report a `LIMIT_EXCEEDED` error before excessive allocation.
+The initial PNG v1 product limit is 100 MiB per original file unless configured otherwise. Both reference implementations of PNG v1 (Python and Node.js) SHOULD apply the same default and report a `LIMIT_EXCEEDED` error before excessive allocation. This limit does not apply to a different carrier format such as JPEG v2, whose product limit is defined by its own specification.
 
 ## 9. Filename rules
 
