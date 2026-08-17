@@ -34,6 +34,6 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Setup complete. You can now run start.bat.
+echo Setup complete. Return to the project root and run start.bat.
 pause
 exit /b 0

@@ -35,7 +35,7 @@ echo Installing locked dependencies...
 if errorlevel 1 goto install_failed
 ".venv\Scripts\python.exe" -c "import PIL;raise SystemExit(0 if PIL.__version__ == '12.3.0' else 1)"
 if errorlevel 1 goto verify_failed
-echo Setup complete. You can now run start.bat.
+echo Setup complete. Return to the project root and run start.bat.
 pause
 exit /b 0
 

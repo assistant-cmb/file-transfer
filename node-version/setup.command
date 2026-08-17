@@ -31,5 +31,5 @@ if ! node -e 'const sharp = require("sharp"); process.exit(sharp.versions.sharp 
   pause_with_error "sharp 版本或本机二进制校验失败。请删除 node_modules 后重新运行 setup.command。"
 fi
 
-echo "安装完成。现在可以双击 start.command。"
+echo "安装完成。现在可以返回项目根目录双击 start.command。"
 read -r -p "按回车键关闭…" || true

@@ -9,12 +9,20 @@ Python 版和 Node.js 版遵循相同格式，可以相互恢复对方生成的�
 
 ## 选择版本
 
-| 版本 | 运行要求 | 图片依赖 | macOS 启动 | Windows 启动 |
-| --- | --- | --- | --- | --- |
-| Python | Python 3.11+ | Pillow 12.3.0 | `python-version/start.command` | `python-version/start.bat` |
-| Node.js | Node.js 20.9.0+ | sharp 0.35.3 | `node-version/start.command` | `node-version/start.bat` |
+项目根目录只有一套统一启动入口：macOS/Linux 使用 `start.command`，Windows 使用
+`start.bat`。启动器按以下顺序自动选择已经安装好依赖的实现：
 
-只需选择本机已有运行环境的一版，不需要同时安装 Python 和 Node.js。
+1. `python-version/.venv` 中的 Python 版；
+2. 当前 Python 环境中的 Python 版；
+3. Node.js 版。
+
+因此默认总是优先使用 Python，Python 版不可用时才回退 Node.js。统一启动器本身需要
+Python 3.11+；实际图片处理只需安装下面任意一版的依赖，不需要两版都安装。
+
+| 实现 | 运行要求 | 图片依赖 | 安装目录 |
+| --- | --- | --- | --- |
+| Python（优先） | Python 3.11+ | Pillow 12.3.0 | `python-version` |
+| Node.js（回退） | Node.js 20.9.0+ | sharp 0.35.3 | `node-version` |
 
 ## 首次安装依赖
 
@@ -22,14 +30,14 @@ Python 版和 Node.js 版遵循相同格式，可以相互恢复对方生成的�
 
 ### macOS
 
-在 Finder 中打开所选版本目录，先双击 `setup.command`。安装完成后双击 `start.command`。
+在 Finder 中打开所选版本目录，先双击其中的 `setup.command`。安装完成后回到项目
+根目录，双击统一的 `start.command`。
 
 如果脚本没有执行权限，在终端执行一次：
 
 ```bash
-chmod +x package.command package_release.py
-chmod +x python-version/setup.command python-version/start.command
-chmod +x node-version/setup.command node-version/start.command
+chmod +x start.command start.py package.command package_release.py
+chmod +x python-version/setup.command node-version/setup.command
 ```
 
 如果 macOS 阻止打开，可在 Finder 中右键脚本并选择“打开”，或在“系统设置 → 隐私与安全性”中允许。
@@ -38,9 +46,20 @@ Python 安装脚本会在 `python-version/.venv` 创建独立虚拟环境，不�
 
 ### Windows
 
-在资源管理器中打开所选版本目录，先双击 `setup.bat`，安装完成后双击 `start.bat`。
+在资源管理器中打开所选版本目录，先双击其中的 `setup.bat`。安装完成后回到项目
+根目录，双击统一的 `start.bat`。
 
 终端窗口会显示本地访问地址。关闭终端窗口或按 `Ctrl+C` 即可停止服务。
+
+也可直接运行统一启动器并检查或指定实现：
+
+```bash
+python3 start.py --check
+python3 start.py --runtime python
+python3 start.py --runtime node --no-browser --port 9000
+```
+
+`--runtime` 默认为 `auto`。未被统一启动器识别的参数会原样传递给服务命令。
 
 ## 生成传输包
 
@@ -93,7 +112,7 @@ JPEG v2 **不能裁剪**。请发送完整图片并保留四周白色静区；�
 
 ## 网页操作
 
-1. 双击对应版本的启动脚本，等待浏览器打开本地页面。
+1. 双击项目根目录的统一启动脚本，等待浏览器打开本地页面。
 2. 选择“文件 → 图片”或“图片 → 文件”。
 3. 选择 **PNG v1** 或 **JPEG v2**。
 4. 点击选择区域，或者把文件拖入页面。
@@ -191,6 +210,8 @@ HTTP 400，超出限制返回 HTTP 413。服务只面向本机使用，没有身
 file-transfer/
 ├── package.command/.bat     # 生成不含依赖和开发文件的传输包
 ├── package_release.py       # 跨平台打包逻辑与排除清单
+├── start.command/.bat       # macOS/Linux 与 Windows 统一启动入口
+├── start.py                 # Python 优先、Node.js 回退的共同启动逻辑
 ├── FORMAT.md                 # 已冻结的无损 PNG v1.0 规范
 ├── FORMAT_V2.md              # 已冻结的容错 JPEG v2 profile 1 规范
 ├── REQUIREMENTS.md           # PNG v1 初始需求历史归档
@@ -237,9 +258,11 @@ python3 -m unittest discover -s tests -p '*_test.py' -v
 
 ## 常见问题
 
-### 启动脚本提示缺少 Pillow 或 sharp
+### 启动脚本提示 Python 版和 Node.js 版都不可用
 
-关闭启动窗口，在对应版本目录运行一次 `setup.command` 或 `setup.bat`，再重新启动。setup 会联网下载锁定版本；start 本身不会联网安装。
+关闭启动窗口，在 `python-version` 目录运行一次 `setup.command` 或 `setup.bat`；若只想
+使用 Node.js，则改在 `node-version` 目录运行。安装完成后回到根目录重新启动。setup
+会联网下载锁定版本；统一启动器本身不会联网安装。
 
 ### 为什么 PNG v1 无法恢复？
 

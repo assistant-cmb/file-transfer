@@ -34,5 +34,5 @@ if ! ".venv/bin/python" -c 'import PIL; raise SystemExit(0 if PIL.__version__ ==
   pause_with_error "Pillow 版本校验失败。请删除 .venv 后重新运行 setup.command。"
 fi
 
-echo "安装完成。现在可以双击 start.command。"
+echo "安装完成。现在可以返回项目根目录双击 start.command。"
 read -r -p "按回车键关闭…" || true
